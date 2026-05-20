@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tierlist — Letterboxd · Кинопоиск</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0d0d0f; --surface:#16161a; --surface2:#1e1e24;
+  --border:rgba(255,255,255,0.07); --border-h:rgba(255,255,255,0.15);
+  --text:#e8e8f0; --muted:#6b6b80; --dim:#3a3a4a;
+  --radius:10px; --rsm:6px;
+  --acc:#00c030;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text); font-family:'Nunito',sans-serif; min-height:100vh; overflow-x:hidden; }
+body::before { content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events:none; z-index:0; opacity:0.4; }
+.page { position:relative; z-index:1; max-width:960px; margin:0 auto; padding:2rem 1.5rem 4rem; }
+
+header { margin-bottom:2rem; }
+.logo { font-family:'Bebas Neue',sans-serif; font-size:3rem; letter-spacing:.05em; line-height:1; }
+.logo span { color:var(--acc); transition:color .3s; }
+.tagline { font-size:.8rem; color:var(--muted); margin-top:4px; letter-spacing:.04em; text-transform:uppercase; }
+
+/* TABS */
+.tabs { display:flex; gap:4px; margin-bottom:1.75rem; background:var(--surface); border-radius:var(--radius); padding:5px; border:1px solid var(--border); }
+.tab-btn { flex:1; background:transparent; border:none; border-radius:var(--rsm); color:var(--muted); font-family:'Nunito',sans-serif; font-size:.9rem; font-weight:600; padding:9px 12px; cursor:pointer; transition:all .18s; text-align:center; }
+.tab-btn:hover { color:var(--text); }
+.tab-btn.active { background:var(--surface2); color:var(--acc); box-shadow:0 1px 4px rgba(0,0,0,.3); }
+
+.panel { display:none; }
+.panel.active { display:block; }
+
+/* IMPORT CARD */
+.import-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem; margin-bottom:2rem; }
+.import-card h2 { font-size:.72rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:1rem; }
+
+.input-row { display:flex; gap:10px; }
+input[type=text] { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:var(--rsm); color:var(--text); font-family:'Nunito',sans-serif; font-size:.95rem; padding:0 1rem; height:44px; outline:none; transition:border-color .2s; }
+input[type=text]:focus { border-color:var(--acc); }
+input[type=text]::placeholder { color:var(--dim); }
+
+button { background:var(--acc); border:none; border-radius:var(--rsm); color:#0d0d0f; font-family:'Nunito',sans-serif; font-size:.9rem; font-weight:600; padding:0 1.2rem; height:44px; cursor:pointer; transition:opacity .15s,transform .1s; white-space:nowrap; display:inline-flex; align-items:center; gap:6px; }
+button:hover { opacity:.88; }
+button:active { transform:scale(.97); }
+button:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+button.sec { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
+button.sec:hover { border-color:var(--border-h); }
+
+/* MODE TOGGLE inside card */
+.mode-row { display:flex; gap:6px; margin-bottom:1rem; }
+.mode-btn { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:var(--rsm); color:var(--muted); font-family:'Nunito',sans-serif; font-size:.82rem; font-weight:600; padding:7px 10px; cursor:pointer; transition:all .15s; text-align:center; height:auto; }
+.mode-btn.active { background:var(--acc); color:#0d0d0f; border-color:var(--acc); }
+
+/* CSV INSTRUCTION */
+.csv-steps { margin-top:14px; display:flex; flex-direction:column; gap:8px; }
+.csv-step { display:flex; gap:10px; align-items:flex-start; }
+.csv-num { width:22px; height:22px; min-width:22px; border-radius:50%; background:var(--acc); color:#0d0d0f; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:1px; flex-shrink:0; }
+.csv-text { font-size:.82rem; color:var(--muted); line-height:1.6; }
+.csv-text a { color:var(--acc); text-decoration:none; }
+.csv-text a:hover { text-decoration:underline; }
+.csv-text code { background:var(--surface2); border:0.5px solid var(--border); border-radius:4px; padding:1px 6px; font-family:monospace; font-size:.8rem; color:var(--text); }
+
+/* file drop zone */
+.drop-zone { border:1.5px dashed var(--border); border-radius:var(--rsm); padding:1.5rem; text-align:center; cursor:pointer; transition:border-color .2s, background .2s; margin-top:4px; }
+.drop-zone:hover, .drop-zone.over { border-color:var(--acc); background:rgba(0,192,48,.05); }
+.drop-zone p { font-size:.85rem; color:var(--muted); }
+.drop-zone strong { color:var(--text); display:block; margin-bottom:4px; font-size:.9rem; }
+.drop-zone input[type=file] { display:none; }
+
+.filters { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; align-items:center; }
+.filters label { font-size:.8rem; color:var(--muted); }
+select { background:var(--surface2); border:1px solid var(--border); border-radius:var(--rsm); color:var(--text); font-family:'Nunito',sans-serif; font-size:.85rem; padding:5px 10px; outline:none; cursor:pointer; }
+
+.prog-wrap { margin-top:12px; display:none; }
+.prog-track { height:2px; background:var(--border); border-radius:2px; overflow:hidden; }
+.prog-fill { height:100%; background:var(--acc); border-radius:2px; width:0%; transition:width .35s ease; }
+.prog-lbl { font-size:.78rem; color:var(--muted); margin-top:6px; }
+.err { font-size:.85rem; color:#ff6b6b; margin-top:10px; display:none; }
+
+/* POOL */
+.pool-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.pool-title { font-size:.72rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); }
+.pool-meta { font-size:.78rem; color:var(--dim); }
+.pool-search { margin-bottom:10px; }
+.pool-search input { width:100%; max-width:300px; font-size:.85rem; height:36px; }
+.pool-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px; min-height:100px; max-height:340px; overflow-y:auto; display:flex; flex-wrap:wrap; gap:8px; align-content:flex-start; margin-bottom:2rem; transition:border-color .15s,background .15s; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+.pool-wrap.drag-over { border-color:var(--acc); background:rgba(0,192,48,.05); }
+.empty-hint { width:100%; text-align:center; font-size:.85rem; color:var(--dim); padding:1.5rem 0; pointer-events:none; }
+
+/* TIERLIST */
+.tl-label { font-size:.72rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:10px; }
+.tier-row { display:flex; align-items:stretch; border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); margin-bottom:6px; min-height:120px; }
+.tlbl { width:60px; min-width:60px; display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:2.2rem; letter-spacing:.05em; flex-shrink:0; }
+.tier-S .tlbl{background:#ff6b6b;color:#3a0000} .tier-A .tlbl{background:#ff9f43;color:#3a1a00}
+.tier-B .tlbl{background:#ffd32a;color:#3a2a00} .tier-C .tlbl{background:#7bed9f;color:#003a10}
+.tier-D .tlbl{background:#74b9ff;color:#001e3a}
+.tier-drop { flex:1; display:flex; flex-wrap:wrap; align-items:flex-start; align-content:flex-start; gap:8px; padding:10px; background:var(--surface); min-height:120px; transition:background .12s; }
+.tier-drop.drag-over { background:rgba(0,192,48,.07); }
+.tier-drop .card { width:68px; }
+
+/* CARD */
+.card { width:82px; border-radius:var(--rsm); overflow:hidden; border:1px solid var(--border); background:var(--surface2); cursor:grab; user-select:none; position:relative; flex-shrink:0; transition:transform .12s,border-color .12s; touch-action:none; -webkit-user-select:none; }
+.card:hover { transform:translateY(-3px); border-color:var(--border-h); }
+.card.dragging { opacity:.3; transform:scale(.92); }
+.card img { width:100%; aspect-ratio:2/3; object-fit:cover; display:block; background:var(--surface); }
+.card .no-poster { width:100%; aspect-ratio:2/3; display:flex; align-items:center; justify-content:center; background:var(--surface2); font-size:10px; color:var(--muted); text-align:center; padding:6px; line-height:1.3; }
+.card .ci { padding:5px 5px 7px; }
+.card .ct { font-size:10px; font-weight:600; color:var(--text); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.card .cy { font-size:9px; color:var(--muted); margin-top:2px; }
+.score-b { position:absolute; top:4px; left:4px; background:rgba(0,0,0,.75); color:#fff; font-size:10px; font-weight:700; border-radius:4px; padding:1px 5px; line-height:1.6; }
+.score-b.hi{color:#7bed9f} .score-b.mi{color:#ffd32a} .score-b.lo{color:#ff6b6b}
+.stars-b { position:absolute; top:4px; left:4px; background:rgba(0,0,0,.75); color:#f5c518; font-size:9px; font-weight:700; border-radius:4px; padding:1px 5px; line-height:1.7; }
+.ret-btn { position:absolute; top:4px; right:4px; width:20px; height:20px; min-height:unset; border-radius:50%; background:rgba(0,0,0,.7); color:#fff; font-size:11px; display:none; align-items:center; justify-content:center; cursor:pointer; border:none; padding:0; font-family:'Nunito',sans-serif; }
+.card:hover .ret-btn { display:flex; }
+.ret-btn:hover { background:rgba(0,192,48,.85); opacity:1; }
+
+.touch-drag { position:fixed!important; z-index:9999; pointer-events:none; opacity:.85; transform:scale(1.08) rotate(2deg); box-shadow:0 8px 32px rgba(0,0,0,.5); transition:none!important; }
+.drop-hl { border-color:var(--acc)!important; background:rgba(0,192,48,.08)!important; }
+
+.actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.act-r { margin-left:auto; display:flex; gap:10px; }
+
+::-webkit-scrollbar{width:5px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+@media(max-width:600px){ .logo{font-size:2.4rem} .input-row{flex-direction:column} .act-r{margin-left:0} .tabs{flex-direction:column} }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <div class="logo">FILM<span>TIER</span></div>
+  <div class="tagline">Letterboxd · Кинопоиск · Drag & Drop</div>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('lb',this)">🎬 Letterboxd</button>
+  <button class="tab-btn" onclick="switchTab('kp',this)">⭐ Кинопоиск</button>
+</div>
+
+<!-- ═══ LETTERBOXD ═══ -->
+<div class="panel active" id="panel-lb">
+  <div class="import-card">
+    <h2>Letterboxd</h2>
+
+    <!-- mode toggle -->
+    <div class="mode-row">
+      <button class="mode-btn active" id="lb-mode-csv" onclick="lbSetMode('csv')">📄 CSV файл</button>
+      <button class="mode-btn" id="lb-mode-nick" onclick="lbSetMode('nick')">👤 По никнейму</button>
+    </div>
+
+    <!-- CSV mode -->
+    <div id="lb-csv-ui">
+      <div class="drop-zone" id="lb-dropzone" onclick="document.getElementById('lb-file').click()">
+        <input type="file" id="lb-file" accept=".csv" onchange="lbLoadCsv()">
+        <strong>Перетащи CSV сюда или нажми для выбора</strong>
+        <p>watched.csv или ratings.csv из экспорта Letterboxd</p>
+      </div>
+      <div class="csv-steps">
+        <div class="csv-step"><div class="csv-num">1</div><div class="csv-text">Открой <a href="https://letterboxd.com/settings/data/" target="_blank">letterboxd.com/settings/data/</a></div></div>
+        <div class="csv-step"><div class="csv-num">2</div><div class="csv-text">Нажми <strong style="color:var(--text)">Export Your Data</strong> — скачается ZIP-архив</div></div>
+        <div class="csv-step"><div class="csv-num">3</div><div class="csv-text">Распакуй архив и найди файл <code>watched.csv</code> (все просмотренные) или <code>ratings.csv</code> (с оценками)</div></div>
+        <div class="csv-step"><div class="csv-num">4</div><div class="csv-text">Загрузи файл выше — постеры подтянутся автоматически через TMDB</div></div>
+      </div>
+    </div>
+
+    <!-- Nick mode -->
+    <div id="lb-nick-ui" style="display:none">
+      <div class="input-row">
+        <input type="text" id="lb-nick-input" placeholder="letterboxd.com/username или просто username" />
+        <button id="lb-nick-btn" onclick="lbLoadNick()">▶ Загрузить</button>
+      </div>
+      <p style="font-size:.8rem;color:var(--muted);margin-top:10px">⚠ Требует доступ к Letterboxd — не работает в России без VPN</p>
+    </div>
+
+    <div class="filters" id="lb-filters" style="display:none">
+      <label>Мин. оценка:</label>
+      <select id="lb-score" onchange="lbFilter()">
+        <option value="0">Все</option>
+        <option value="1">★+</option><option value="2">★★+</option>
+        <option value="3">★★★+</option><option value="4">★★★★+</option>
+      </select>
+      <label style="margin-left:6px"><input type="checkbox" id="lb-scores-toggle" checked onchange="lbFilter()" style="margin-right:4px;accent-color:var(--acc)">Оценки</label>
+    </div>
+    <div class="prog-wrap" id="lb-prog"><div class="prog-track"><div class="prog-fill" id="lb-fill"></div></div><div class="prog-lbl" id="lb-lbl"></div></div>
+    <div class="err" id="lb-err"></div>
+  </div>
+
+  <div class="pool-header"><span class="pool-title">Пул фильмов</span><span class="pool-meta" id="lb-meta"></span></div>
+  <div class="pool-search" id="lb-search-wrap" style="display:none"><input type="text" id="lb-search" placeholder="Поиск..." oninput="lbFilter()"/></div>
+  <div class="pool-wrap" id="pool-lb"><div class="empty-hint">Загрузи CSV или профиль — фильмы появятся здесь</div></div>
+</div>
+
+<!-- ═══ КИНОПОИСК ═══ -->
+<div class="panel" id="panel-kp">
+  <div class="import-card">
+    <h2>Кинопоиск</h2>
+    <div class="input-row">
+      <input type="text" id="kp-input" placeholder="kinopoisk.ru/user/12345678 или просто ID" />
+      <button id="kp-btn" onclick="kpLoad()">▶ Загрузить</button>
+    </div>
+    <p style="font-size:.8rem;color:var(--muted);margin-top:10px">Найди свой числовой ID в адресе профиля: <code style="background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:.8rem">kinopoisk.ru/user/<b style="color:var(--text)">12345678</b>/</code></p>
+    <div class="filters" id="kp-filters" style="display:none">
+      <label>Оценка:</label>
+      <select id="kp-score" onchange="kpFilter()"><option value="0">Все</option><option value="7">7+</option><option value="8">8+</option><option value="9">9+</option></select>
+      <label>Тип:</label>
+      <select id="kp-kind" onchange="kpFilter()"><option value="">Все</option><option value="movie">Фильмы</option><option value="tv-series">Сериалы</option></select>
+      <label style="margin-left:6px"><input type="checkbox" id="kp-scores-toggle" checked onchange="kpFilter()" style="margin-right:4px;accent-color:#f60">Оценки</label>
+    </div>
+    <div class="prog-wrap" id="kp-prog"><div class="prog-track"><div class="prog-fill" id="kp-fill"></div></div><div class="prog-lbl" id="kp-lbl"></div></div>
+    <div class="err" id="kp-err"></div>
+  </div>
+  <div class="pool-header"><span class="pool-title">Пул фильмов</span><span class="pool-meta" id="kp-meta"></span></div>
+  <div class="pool-search" id="kp-search-wrap" style="display:none"><input type="text" id="kp-search" placeholder="Поиск..." oninput="kpFilter()"/></div>
+  <div class="pool-wrap" id="pool-kp"><div class="empty-hint">Загрузи профиль — фильмы появятся здесь</div></div>
+</div>
+
+<!-- SHARED TIERLIST -->
+<div style="margin-top:1rem">
+  <div class="tl-label">Тирлист</div>
+  <div id="tierlist">
+    <div class="tier-row tier-S"><div class="tlbl">S</div><div class="tier-drop" data-zone="S"><div class="empty-hint">Перетащи сюда</div></div></div>
+    <div class="tier-row tier-A"><div class="tlbl">A</div><div class="tier-drop" data-zone="A"><div class="empty-hint">Перетащи сюда</div></div></div>
+    <div class="tier-row tier-B"><div class="tlbl">B</div><div class="tier-drop" data-zone="B"><div class="empty-hint">Перетащи сюда</div></div></div>
+    <div class="tier-row tier-C"><div class="tlbl">C</div><div class="tier-drop" data-zone="C"><div class="empty-hint">Перетащи сюда</div></div></div>
+    <div class="tier-row tier-D"><div class="tlbl">D</div><div class="tier-drop" data-zone="D"><div class="empty-hint">Перетащи сюда</div></div></div>
+  </div>
+</div>
+<div style="margin-top:1.5rem" class="actions">
+  <button class="sec" onclick="resetTierlist()">↩ Сбросить</button>
+  <div class="act-r"><button onclick="exportImg()">⬇ Сохранить PNG</button></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+var TMDB_KEY = '4f4dfd8e0e28e0f68e785f33d3e2e5d7';
+var lbFilms = [], kpItems = [];
+var currentTab = 'lb';
+var dragCard = null;
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+var ACCENT = { lb:'#00c030', kp:'#f60' };
+function switchTab(id, btn) {
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById('panel-'+id).classList.add('active');
+  btn.classList.add('active');
+  currentTab = id;
+  document.documentElement.style.setProperty('--acc', ACCENT[id]);
+}
+
+// ── LB MODE TOGGLE ────────────────────────────────────────────────────────────
+var lbMode = 'csv';
+function lbSetMode(m) {
+  lbMode = m;
+  document.getElementById('lb-csv-ui').style.display = m==='csv' ? 'block' : 'none';
+  document.getElementById('lb-nick-ui').style.display = m==='nick' ? 'block' : 'none';
+  document.getElementById('lb-mode-csv').classList.toggle('active', m==='csv');
+  document.getElementById('lb-mode-nick').classList.toggle('active', m==='nick');
+}
+
+// ── DROP ZONE ─────────────────────────────────────────────────────────────────
+var dz = document.getElementById('lb-dropzone');
+dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', function(){ dz.classList.remove('over'); });
+dz.addEventListener('drop', function(e){ e.preventDefault(); dz.classList.remove('over'); var f=e.dataTransfer.files[0]; if(f&&f.name.endsWith('.csv')) processLbCsv(f); });
+
+// ── PROXIES ───────────────────────────────────────────────────────────────────
+var PROXIES = [
+  function(u){ return 'https://corsproxy.io/?url='+encodeURIComponent(u); },
+  function(u){ return 'https://api.allorigins.win/raw?url='+encodeURIComponent(u); },
+  function(u){ return 'https://thingproxy.freeboard.io/fetch/'+u; },
+  function(u){ return 'https://proxy.cors.sh/'+u; }
+];
+function proxyFetch(url) {
+  return new Promise(function(resolve, reject) {
+    var done=false, failed=0;
+    var ctrls = PROXIES.map(function(proxy,i){
+      var c = new AbortController();
+      fetch(proxy(url),{signal:c.signal}).then(function(res){
+        if(done) return;
+        if(res.ok){ done=true; ctrls.forEach(function(_,j){if(j!==i)try{ctrls[j].abort();}catch(e){}}); resolve(res); }
+        else { failed++; if(failed===PROXIES.length&&!done){done=true;reject(new Error('All proxies failed'));} }
+      }).catch(function(){ failed++; if(failed===PROXIES.length&&!done){done=true;reject(new Error('Ошибка'));} });
+      return c;
+    });
+    setTimeout(function(){ if(!done){done=true;ctrls.forEach(function(c){try{c.abort();}catch(e){}});reject(new Error('Timeout'));}},15000);
+  });
+}
+function sleep(ms){ return new Promise(function(r){setTimeout(r,ms);}); }
+
+// ── PROGRESS / ERROR ──────────────────────────────────────────────────────────
+function setP(pfx,pct,lbl){
+  var w=document.getElementById(pfx+'-prog'),f=document.getElementById(pfx+'-fill'),l=document.getElementById(pfx+'-lbl');
+  if(pct<=0){w.style.display='none';return;} w.style.display='block'; f.style.width=pct+'%'; if(lbl)l.textContent=lbl;
+}
+function setE(pfx,msg){ var e=document.getElementById(pfx+'-err'); e.textContent=msg; e.style.display=msg?'block':'none'; }
+
+// ── LETTERBOXD CSV ────────────────────────────────────────────────────────────
+function lbLoadCsv(){ var f=document.getElementById('lb-file').files[0]; if(f) processLbCsv(f); }
+
+function processLbCsv(file){
+  setE('lb',''); setP('lb',10,'Читаем файл...');
+  var reader = new FileReader();
+  reader.onload = async function(e){
+    try{
+      var lines = e.target.result.split('\n');
+      var header = lines[0].split(',');
+      var nameIdx=header.indexOf('Name'), yearIdx=header.indexOf('Year');
+      var ratingIdx=header.indexOf('Rating'), dateIdx=header.indexOf('Watched Date');
+      if(nameIdx===-1) throw new Error('Не тот файл. Нужен watched.csv или ratings.csv.');
+      var films=[];
+      for(var i=1;i<lines.length;i++){
+        var cols=parseCsv(lines[i]);
+        if(!cols[nameIdx]) continue;
+        films.push({ name:cols[nameIdx], year:cols[yearIdx]||'', rating:parseFloat(cols[ratingIdx])||0, poster:null });
+      }
+      if(!films.length) throw new Error('Фильмов не найдено.');
+      setP('lb',30,'Загружаем постеры ('+films.length+' фильмов)...');
+      for(var b=0;b<films.length;b+=8){
+        var slice=films.slice(b,b+8);
+        await Promise.all(slice.map(fetchTmdb));
+        setP('lb',30+Math.round(((b+8)/films.length)*68),'Постеры: '+Math.min(b+8,films.length)+' / '+films.length);
+      }
+      lbFilms=films;
+      document.getElementById('lb-filters').style.display='flex';
+      document.getElementById('lb-search-wrap').style.display='block';
+      lbFilter(); setP('lb',0);
+    }catch(ex){ setE('lb',ex.message||'Ошибка'); setP('lb',0); }
+  };
+  reader.readAsText(file);
+}
+
+function parseCsv(line){
+  var cols=[],cur='',inQ=false;
+  for(var i=0;i<line.length;i++){
+    var c=line[i];
+    if(c==='"'){inQ=!inQ;}
+    else if(c===','&&!inQ){cols.push(cur.trim());cur='';}
+    else{cur+=c;}
+  }
+  cols.push(cur.trim()); return cols;
+}
+
+async function fetchTmdb(film){
+  try{
+    var url='https://api.themoviedb.org/3/search/movie?api_key='+TMDB_KEY+'&query='+encodeURIComponent(film.name)+(film.year?'&year='+film.year:'')+'&language=ru-RU';
+    var res=await fetch(url); if(!res.ok)return;
+    var data=await res.json();
+    if(data.results&&data.results.length&&data.results[0].poster_path)
+      film.poster='https://image.tmdb.org/t/p/w185'+data.results[0].poster_path;
+  }catch(e){}
+}
+
+// ── LETTERBOXD BY NICK ────────────────────────────────────────────────────────
+function parseUsername(s){ s=s.trim(); try{ var u=new URL(s.startsWith('http')?s:'https://'+s); var parts=u.pathname.split('/').filter(Boolean); if(parts.length)return parts[0]; }catch(e){} return s.replace(/^@/,''); }
+
+function parseFilmsFromHtml(html){
+  var films=[], liRe=/<li[^>]*class="[^"]*poster-container[^"]*"[^>]*>([\s\S]*?)<\/li>/g, match;
+  while((match=liRe.exec(html))!==null){
+    var b=match[1];
+    var slugM=/data-film-slug="([^"]+)"/.exec(b);
+    var nameM=/alt="([^"]+)"/.exec(b);
+    var yearM=/data-film-release-year="([^"]+)"/.exec(b);
+    var ratingM=/data-owner-rating="([^"]*)"/.exec(b);
+    if(slugM&&nameM){
+      var r=ratingM?parseInt(ratingM[1]):0;
+      films.push({ slug:slugM[1], name:nameM[1], year:yearM?yearM[1]:'', rating:r, stars:ratingToStars(r), poster:null });
+    }
+  }
+  return films;
+}
+
+function getTotalPages(html){
+  var nums=[]; var re=/paginate-page[^"]*"[^>]*>\s*(\d+)\s*<\/a>/g, m;
+  while((m=re.exec(html))!==null) nums.push(parseInt(m[1]));
+  return nums.length?Math.max.apply(null,nums):1;
+}
+
+function ratingToStars(r){
+  var map={1:'½',2:'★',3:'★½',4:'★★',5:'★★½',6:'★★★',7:'★★★½',8:'★★★★',9:'★★★★½',10:'★★★★★'};
+  return map[r]||'';
+}
+
+async function lbLoadNick(){
+  var raw=document.getElementById('lb-nick-input').value; if(!raw.trim())return;
+  var username=parseUsername(raw);
+  setE('lb',''); setP('lb',5,'Подключаемся к Letterboxd...');
+  document.getElementById('lb-nick-btn').disabled=true;
+  try{
+    var firstRes=await proxyFetch('https://letterboxd.com/'+username+'/films/');
+    if(!firstRes.ok) throw new Error('Пользователь не найден.');
+    var firstHtml=await firstRes.text();
+    if(firstHtml.indexOf('Page Not Found')!==-1||firstHtml.indexOf("Sorry, we can")!==-1)
+      throw new Error('Пользователь "'+username+'" не найден на Letterboxd.');
+    var totalPages=getTotalPages(firstHtml);
+    var films=parseFilmsFromHtml(firstHtml);
+    setP('lb',15,'Найдено '+totalPages+' страниц...');
+    if(totalPages>1){
+      var pages=[]; for(var p=2;p<=totalPages;p++) pages.push(p);
+      for(var b=0;b<pages.length;b+=4){
+        var batch=pages.slice(b,b+4);
+        var results=await Promise.all(batch.map(function(pg){
+          return proxyFetch('https://letterboxd.com/'+username+'/films/page/'+pg+'/').then(function(r){return r.text();}).catch(function(){return '';});
+        }));
+        results.forEach(function(html){ if(html) films=films.concat(parseFilmsFromHtml(html)); });
+        setP('lb',15+Math.round(((b+4)/pages.length)*55),'Загружено '+films.length+' фильмов...');
+        if(b+4<pages.length) await sleep(200);
+      }
+    }
+    if(!films.length) throw new Error('Фильмов не найдено. Профиль может быть закрыт.');
+    setP('lb',72,'Загружаем постеры...');
+    for(var i=0;i<films.length;i+=8){
+      var sl=films.slice(i,i+8);
+      await Promise.all(sl.map(function(f){ return fetchTmdb(f); }));
+      setP('lb',72+Math.round(((i+8)/films.length)*26),'Постеры: '+Math.min(i+8,films.length)+' / '+films.length);
+    }
+    lbFilms=films;
+    document.getElementById('lb-filters').style.display='flex';
+    document.getElementById('lb-search-wrap').style.display='block';
+    lbFilter(); setP('lb',0);
+  }catch(ex){ setE('lb',ex.message||'Ошибка загрузки'); setP('lb',0); }
+  document.getElementById('lb-nick-btn').disabled=false;
+}
+
+function lbFilter(){
+  var minR=parseFloat(document.getElementById('lb-score').value)||0;
+  var q=(document.getElementById('lb-search').value||'').toLowerCase();
+  var show=document.getElementById('lb-scores-toggle').checked;
+  var filtered=lbFilms.filter(function(f){ return !minR||(f.rating||0)>=minR; });
+  renderPool('pool-lb','lb-meta',filtered,q,function(f){ return makeLbCard(f,show); });
+}
+
+function makeLbCard(film,showScore){
+  var div=document.createElement('div'); div.className='card'; div.draggable=true;
+  div.dataset.id='lb-'+(film.slug||film.name.replace(/\s/g,'_'));
+  var poster=film.poster?'<img src="'+film.poster+'" alt="" loading="lazy" decoding="async">':'<div class="no-poster">'+film.name+'</div>';
+  var starsH=(film.stars&&showScore)?'<div class="stars-b">'+film.stars+'</div>':
+             (film.rating&&showScore&&!film.stars)?'<div class="stars-b">'+ratingToStars(film.rating*2)+'</div>':'';
+  div.innerHTML=poster+starsH+'<div class="ci"><div class="ct">'+film.name+'</div><div class="cy">'+film.year+'</div></div><button class="ret-btn">↩</button>';
+  div.querySelector('.ret-btn').addEventListener('click',function(e){e.stopPropagation();retPool(div,'pool-lb');});
+  div.addEventListener('dragstart',onDS); div.addEventListener('dragend',onDE); addTouch(div); return div;
+}
+
+// ── КИНОПОИСК ─────────────────────────────────────────────────────────────────
+function parseKpId(s){ s=s.trim(); var m=s.match(/\/user\/(\d+)/); if(m)return m[1]; return s.replace(/\D/g,''); }
+
+async function kpLoad(){
+  var raw=document.getElementById('kp-input').value; if(!raw.trim())return;
+  var uid=parseKpId(raw);
+  if(!uid){setE('kp','Не удалось найти ID. Формат: kinopoisk.ru/user/12345678');return;}
+  setE('kp',''); setP('kp',5,'Подключаемся к Кинопоиску...');
+  document.getElementById('kp-btn').disabled=true;
+  try{
+    var items=[], page=1;
+    while(true){
+      var url='https://api.kinopoisk.dev/v1.4/user/'+uid+'/votes?page='+page+'&limit=100';
+      var res=await proxyFetch(url);
+      if(!res.ok) break;
+      var data=await res.json();
+      if(!data.docs||!data.docs.length) break;
+      items=items.concat(data.docs);
+      setP('kp',10+Math.min(page*10,85),'Загружено '+items.length+' записей...');
+      if(data.docs.length<100||page>=data.pages) break;
+      page++; await sleep(200);
+    }
+    if(!items.length) throw new Error('Нет оценённых фильмов или профиль закрыт.');
+    kpItems=items;
+    document.getElementById('kp-filters').style.display='flex';
+    document.getElementById('kp-search-wrap').style.display='block';
+    kpFilter(); setP('kp',0);
+  }catch(ex){ setE('kp',ex.message||'Ошибка загрузки. Проверь ID.'); setP('kp',0); }
+  document.getElementById('kp-btn').disabled=false;
+}
+
+function kpFilter(){
+  var minS=parseInt(document.getElementById('kp-score').value)||0;
+  var kind=document.getElementById('kp-kind').value;
+  var q=(document.getElementById('kp-search').value||'').toLowerCase();
+  var show=document.getElementById('kp-scores-toggle').checked;
+  var filtered=kpItems.filter(function(item){
+    if(minS&&(item.userRating||0)<minS) return false;
+    if(kind&&item.movie&&item.movie.type!==kind) return false;
+    return true;
+  });
+  renderPool('pool-kp','kp-meta',filtered,q,function(item){ return makeKpCard(item,show); });
+}
+
+function makeKpCard(item,showScore){
+  var movie=item.movie||{};
+  var title=movie.name||movie.alternativeName||'—';
+  var year=movie.year||'';
+  var poster=movie.poster&&movie.poster.previewUrl?'<img src="'+movie.poster.previewUrl+'" alt="" loading="lazy" decoding="async">':'<div class="no-poster">'+title+'</div>';
+  var s=item.userRating||0; var sc=s>=9?'hi':s>=7?'mi':s>0?'lo':'';
+  var scoreH=(s>0&&showScore)?'<div class="score-b '+sc+'" style="color:'+(sc==='hi'?'#7bed9f':sc==='mi'?'#ffd32a':'#ff6b6b')+'">'+s+'</div>':'';
+  var div=document.createElement('div'); div.className='card'; div.draggable=true;
+  div.dataset.id='kp-'+(movie.id||Math.random());
+  div.innerHTML=poster+scoreH+'<div class="ci"><div class="ct">'+title+'</div><div class="cy">'+year+'</div></div><button class="ret-btn">↩</button>';
+  div.querySelector('.ret-btn').addEventListener('click',function(e){e.stopPropagation();retPool(div,'pool-kp');});
+  div.addEventListener('dragstart',onDS); div.addEventListener('dragend',onDE); addTouch(div); return div;
+}
+
+// ── POOL RENDERER ─────────────────────────────────────────────────────────────
+function renderPool(poolId,metaId,items,q,mkCard){
+  var pool=document.getElementById(poolId); pool.innerHTML='';
+  var vis=q?items.filter(function(item){
+    var t=((item.name)||(item.anime&&(item.anime.russian||item.anime.name))||((item.movie)&&(item.movie.name||item.movie.alternativeName))||'').toLowerCase();
+    return t.indexOf(q)!==-1;
+  }):items;
+  if(!vis.length){pool.innerHTML='<div class="empty-hint">Ничего не найдено</div>';document.getElementById(metaId).textContent='';return;}
+  vis.forEach(function(item){
+    var id='lb-'+(item.slug||(item.name||'').replace(/\s/g,'_'));
+    if(poolId==='pool-kp') id='kp-'+((item.movie&&item.movie.id)||'');
+    if(document.querySelector('.tier-drop [data-id="'+id+'"]'))return;
+    pool.appendChild(mkCard(item));
+  });
+  var n=pool.querySelectorAll('.card').length;
+  document.getElementById(metaId).textContent=n?n+' фильмов':'';
+  syncHints(pool);
+}
+
+function retPool(card,poolId){
+  var pool=document.getElementById(poolId);
+  var hint=pool.querySelector('.empty-hint'); if(hint)hint.remove();
+  card.style.width=''; pool.appendChild(card); syncHints(pool); updMeta(poolId);
+}
+
+// ── DRAG & DROP ───────────────────────────────────────────────────────────────
+function onDS(e){ dragCard=e.currentTarget; setTimeout(function(){if(dragCard)dragCard.classList.add('dragging');},0); e.dataTransfer.effectAllowed='move'; }
+function onDE(){ if(dragCard)dragCard.classList.remove('dragging'); dragCard=null; document.querySelectorAll('.drag-over').forEach(function(el){el.classList.remove('drag-over');}); syncAll(); updAll(); }
+
+function setupDrop(zone){
+  zone.addEventListener('dragover',function(e){ e.preventDefault(); zone.classList.add('drag-over'); if(!dragCard)return; var after=getAfter(zone,e.clientX); if(after)zone.insertBefore(dragCard,after);else zone.appendChild(dragCard); });
+  zone.addEventListener('dragleave',function(e){ if(!zone.contains(e.relatedTarget))zone.classList.remove('drag-over'); });
+  zone.addEventListener('drop',function(e){ e.preventDefault(); zone.classList.remove('drag-over'); syncAll(); updAll(); });
+}
+function getAfter(c,x){ return Array.from(c.querySelectorAll('.card:not(.dragging):not(.touch-drag)')).reduce(function(cl,ch){ var box=ch.getBoundingClientRect(),off=x-box.left-box.width/2; return(off<0&&off>cl.offset)?{offset:off,el:ch}:cl; },{offset:-Infinity,el:null}).el; }
+document.querySelectorAll('.tier-drop, .pool-wrap').forEach(setupDrop);
+
+// ── TOUCH ─────────────────────────────────────────────────────────────────────
+var tC=null,tCl=null,tHL=null,tOX=0,tOY=0;
+function getZone(x,y){ var zz=document.querySelectorAll('.tier-drop,.pool-wrap'); for(var i=0;i<zz.length;i++){var r=zz[i].getBoundingClientRect();if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return zz[i];} return null; }
+function addTouch(card){
+  card.addEventListener('touchstart',function(e){ if(e.touches.length!==1)return; var t=e.touches[0],rect=card.getBoundingClientRect(); tOX=t.clientX-rect.left;tOY=t.clientY-rect.top;tC=card;tCl=card.cloneNode(true);tCl.classList.add('touch-drag');tCl.style.width=rect.width+'px';tCl.style.left=(t.clientX-tOX)+'px';tCl.style.top=(t.clientY-tOY)+'px';document.body.appendChild(tCl);card.style.opacity='0.3';document.body.style.userSelect='none';e.preventDefault(); },{passive:false});
+  card.addEventListener('touchmove',function(e){ if(!tC||!tCl)return;e.preventDefault();var t=e.touches[0];tCl.style.left=(t.clientX-tOX)+'px';tCl.style.top=(t.clientY-tOY)+'px';var z=getZone(t.clientX,t.clientY);if(tHL&&tHL!==z)tHL.classList.remove('drop-hl');if(z){z.classList.add('drop-hl');tHL=z;} },{passive:false});
+  card.addEventListener('touchend',function(e){ if(!tC||!tCl)return;var t=e.changedTouches[0],z=getZone(t.clientX,t.clientY);if(tHL)tHL.classList.remove('drop-hl');if(z){var after=getAfter(z,t.clientX);if(z.querySelector('.empty-hint'))z.querySelector('.empty-hint').remove();if(after)z.insertBefore(tC,after);else z.appendChild(tC);}tC.style.opacity='';tCl.remove();tCl=null;tC=null;tHL=null;document.body.style.userSelect='';syncAll();updAll(); },{passive:false});
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function syncHints(zone){ var has=zone.querySelector('.card'),hint=zone.querySelector('.empty-hint'); if(!has&&!hint){var h=document.createElement('div');h.className='empty-hint';h.textContent=zone.classList.contains('pool-wrap')?'Все фильмы разложены!':'Перетащи сюда';zone.appendChild(h);}else if(has&&hint)hint.remove(); }
+function syncAll(){ document.querySelectorAll('.tier-drop,.pool-wrap').forEach(syncHints); }
+function updMeta(pid){ var map={'pool-lb':'lb-meta','pool-kp':'kp-meta'}; if(map[pid]){var n=document.getElementById(pid).querySelectorAll('.card').length;document.getElementById(map[pid]).textContent=n?n+' фильмов':'';} }
+function updAll(){ ['pool-lb','pool-kp'].forEach(updMeta); }
+
+function resetTierlist(){
+  var pid='pool-'+(currentTab==='kp'?'kp':'lb');
+  var pool=document.getElementById(pid);
+  document.querySelectorAll('.tier-drop .card').forEach(function(c){c.style.width='';pool.appendChild(c);});
+  syncAll(); updAll();
+}
+
+async function exportImg(){
+  var btn=document.querySelector('button[onclick="exportImg()"]');
+  btn.disabled=true; btn.textContent='Генерируем...';
+  try{
+    var canvas=await html2canvas(document.getElementById('tierlist'),{backgroundColor:'#0d0d0f',scale:2,useCORS:true,allowTaint:false,logging:false});
+    var a=document.createElement('a');a.download='tierlist.png';a.href=canvas.toDataURL('image/png');a.click();
+  }catch(e){alert('Не удалось сохранить — сделай скриншот');}
+  btn.disabled=false; btn.textContent='⬇ Сохранить PNG';
+}
+
+document.getElementById('lb-nick-input').addEventListener('keydown',function(e){if(e.key==='Enter')lbLoadNick();});
+document.getElementById('kp-input').addEventListener('keydown',function(e){if(e.key==='Enter')kpLoad();});
+</script>
+</body>
+</html>
