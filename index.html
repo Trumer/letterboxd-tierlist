@@ -198,11 +198,28 @@ select { background:var(--surface2); border:1px solid var(--border); border-radi
 <div class="panel" id="panel-kp">
   <div class="import-card">
     <h2>Кинопоиск</h2>
-    <div class="input-row">
-      <input type="text" id="kp-input" placeholder="kinopoisk.ru/user/12345678 или просто ID" />
-      <button id="kp-btn" onclick="kpLoad()">▶ Загрузить</button>
+
+    <div id="kp-token-block">
+      <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px">API токен kinopoisk.dev</div>
+      <div class="input-row">
+        <input type="text" id="kp-token-input" placeholder="Вставь токен с kinopoisk.dev" style="font-family:monospace;font-size:.85rem" />
+        <button onclick="kpSaveToken()" id="kp-token-btn">Сохранить</button>
+      </div>
+      <p style="font-size:.78rem;color:var(--muted);margin-top:8px">Получи бесплатный токен на <a href="https://kinopoisk.dev" target="_blank" style="color:#f60">kinopoisk.dev</a> → Profile → Tokens → Create (план FREE). Вводится один раз.</p>
     </div>
-    <p style="font-size:.8rem;color:var(--muted);margin-top:10px">Найди свой числовой ID в адресе профиля: <code style="background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:.8rem">kinopoisk.ru/user/<b style="color:var(--text)">12345678</b>/</code></p>
+
+    <div id="kp-token-ok" style="display:none;margin-bottom:1rem;padding:8px 12px;background:rgba(255,102,0,.1);border:1px solid rgba(255,102,0,.25);border-radius:var(--rsm);font-size:.82rem;color:#f60;display:none;align-items:center;justify-content:space-between;gap:10px">
+      <span>✓ Токен сохранён</span>
+      <button onclick="kpClearToken()" style="background:transparent;border:1px solid rgba(255,102,0,.4);color:#f60;height:28px;font-size:.78rem;padding:0 10px">Изменить</button>
+    </div>
+
+    <div id="kp-load-block" style="display:none">
+      <div class="input-row">
+        <input type="text" id="kp-input" placeholder="kinopoisk.ru/user/12345678 или просто ID" />
+        <button id="kp-btn" onclick="kpLoad()">▶ Загрузить</button>
+      </div>
+      <p style="font-size:.8rem;color:var(--muted);margin-top:10px">Найди свой числовой ID в адресе профиля: <code style="background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:.8rem">kinopoisk.ru/user/<b style="color:var(--text)">12345678</b>/</code></p>
+    </div>
     <div class="filters" id="kp-filters" style="display:none">
       <label>Оценка:</label>
       <select id="kp-score" onchange="kpFilter()"><option value="0">Все</option><option value="7">7+</option><option value="8">8+</option><option value="9">9+</option></select>
@@ -448,17 +465,43 @@ function makeLbCard(film,showScore){
 // ── КИНОПОИСК ─────────────────────────────────────────────────────────────────
 function parseKpId(s){ s=s.trim(); var m=s.match(/\/user\/(\d+)/); if(m)return m[1]; return s.replace(/\D/g,''); }
 
+function kpSaveToken(){
+  var t=document.getElementById('kp-token-input').value.trim();
+  if(!t){setE('kp','Введи токен');return;}
+  localStorage.setItem('kp_token',t);
+  kpShowTokenOk(t);
+}
+function kpClearToken(){
+  localStorage.removeItem('kp_token');
+  document.getElementById('kp-token-block').style.display='block';
+  document.getElementById('kp-token-ok').style.display='none';
+  document.getElementById('kp-load-block').style.display='none';
+}
+function kpShowTokenOk(t){
+  document.getElementById('kp-token-input').value=t;
+  document.getElementById('kp-token-block').style.display='none';
+  document.getElementById('kp-token-ok').style.display='flex';
+  document.getElementById('kp-load-block').style.display='block';
+}
+function kpInitToken(){
+  var saved=localStorage.getItem('kp_token');
+  if(saved){ document.getElementById('kp-token-input').value=saved; kpShowTokenOk(saved); }
+}
+
 async function kpLoad(){
   var raw=document.getElementById('kp-input').value; if(!raw.trim())return;
   var uid=parseKpId(raw);
   if(!uid){setE('kp','Не удалось найти ID. Формат: kinopoisk.ru/user/12345678');return;}
+  var token=localStorage.getItem('kp_token');
+  if(!token){setE('kp','Сначала введи и сохрани токен');return;}
   setE('kp',''); setP('kp',5,'Подключаемся к Кинопоиску...');
   document.getElementById('kp-btn').disabled=true;
   try{
     var items=[], page=1;
     while(true){
       var url='https://api.kinopoisk.dev/v1.4/user/'+uid+'/votes?page='+page+'&limit=100';
-      var res=await proxyFetch(url);
+      var res=await fetch(url,{headers:{'X-API-KEY':token}});
+      if(res.status===401||res.status===403) throw new Error('Неверный токен. Проверь и сохрани заново.');
       if(!res.ok) break;
       var data=await res.json();
       if(!data.docs||!data.docs.length) break;
@@ -572,8 +615,9 @@ async function exportImg(){
   btn.disabled=false; btn.textContent='⬇ Сохранить PNG';
 }
 
-document.getElementById('lb-nick-input').addEventListener('keydown',function(e){if(e.key==='Enter')lbLoadNick();});
 document.getElementById('kp-input').addEventListener('keydown',function(e){if(e.key==='Enter')kpLoad();});
+document.getElementById('lb-nick-input').addEventListener('keydown',function(e){if(e.key==='Enter')lbLoadNick();});
+kpInitToken();
 </script>
 </body>
 </html>
